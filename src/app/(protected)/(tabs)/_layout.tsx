@@ -1,46 +1,107 @@
 import { Tabs } from "expo-router";
-import { Platform } from "react-native";
+import { Platform, Pressable } from "react-native";
+import { useEffect } from "react";
+import Animated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withSpring,
+    withSequence,
+    withTiming
+} from 'react-native-reanimated';
+
 import AntDesign from '@expo/vector-icons/AntDesign';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import COLORS from "@/theme/color"; // Senin hazırladığımız renk paletin
+import COLORS from "@/theme/color"; // Bebek mavili paletimiz
 
+// --- 1. HER TIKLAMAYI YAKALAYAN ÖZEL TAB BUTONUMUZ ---
+const CustomTabButton = (props: any) => {
+    const { onPress, accessibilityState, children, style } = props;
+    const focused = accessibilityState?.selected;
+
+    const scale = useSharedValue(1);
+    const rotation = useSharedValue(0);
+
+    // Sihrin gerçekleştiği yer: HER fiziksel tıklamada burası çalışır
+    const handlePress = (e: any) => {
+        // 1. Animasyonu zorla tetikle (Şu anki değer ne olursa olsun fırlatır)
+        rotation.value = withSequence(
+            withTiming(-15, { duration: 80 }),
+            withTiming(15, { duration: 80 }),
+            withTiming(-10, { duration: 80 }),
+            withSpring(0, { damping: 3, stiffness: 80 })
+        );
+
+        // 2. React Navigation'ın kendi sekme değiştirme işlemini çalıştır
+        if (onPress) onPress(e);
+    };
+
+    // Sadece sekmeden ayrıldığımızda ikonun tekrar küçülmesi için useEffect kullanıyoruz
+    useEffect(() => {
+        if (!focused) {
+            scale.value = withSpring(1);
+            rotation.value = withTiming(0);
+        } else {
+            // Uygulama ilk açıldığında aktif sekmenin büyük durması için
+            scale.value = withSpring(1.2, { damping: 10, stiffness: 100 });
+        }
+    }, [focused]);
+
+    const animatedStyle = useAnimatedStyle(() => {
+        return {
+            transform: [
+                { scale: scale.value },
+                { rotate: `${rotation.value}deg` }
+            ]
+        };
+    });
+
+    return (
+        // Orijinal style'ı alıyoruz ve ikonları tam ortalayacak şekilde esnetiyoruz
+        <Pressable
+            onPress={handlePress}
+            style={[style, { flex: 1, justifyContent: 'center', alignItems: 'center' }]}
+        >
+            <Animated.View style={animatedStyle}>
+                {/* İçerik (İkon) buraya otomatik olarak düşecek */}
+                {children}
+            </Animated.View>
+        </Pressable>
+    );
+};
+
+// --- 2. TABS LAYOUT ---
 export default function TabsLayout() {
     return (
         <Tabs
             screenOptions={{
                 headerShown: false,
-                tabBarShowLabel: false, // Alt yazıları tamamen gizler, ikonları merkeze çeker
-                tabBarActiveTintColor: COLORS.cute, // Aktif ikon rengi (Bebek mavisi vs.)
-                tabBarInactiveTintColor: COLORS.secondary, // Pasif ikon rengi
-                tabBarHideOnKeyboard: true, // Kanka bu çok önemli: Chat ekranında klavye açılınca menü yukarı zıplamaz!
+                tabBarShowLabel: false,
+                tabBarActiveTintColor: COLORS.cute, // Kendi rengin
+                tabBarInactiveTintColor: COLORS.secondary,
+                tabBarHideOnKeyboard: true,
 
-                // Asıl şovu yaptığımız yer: tabBarStyle
+                // BÜTÜN SEKMELERE "BENİM YAZDIĞIM BUTONU KULLAN" DİYORUZ:
+                tabBarButton: (props) => <CustomTabButton {...props} />,
+
                 tabBarStyle: {
-                    position: "absolute", // Menüyü ekrandan koparıp havada (floating) durmasını sağlar
-                    bottom: Platform.OS === "ios" ? 25 : 15, // Cihazın altına yapışmasın diye boşluk
-                    backgroundColor: COLORS.card || "#FFFFFF", // Kartın arka plan rengi
-                    borderRadius: 20, // Köşeleri yumuşatır
-                    height: 65, // Menü kalınlığı
-                    borderTopWidth: 0, // Üstteki o varsayılan çirkin ince gri çizgiyi yok eder
-                    paddingTop: 12,
+                    position: "absolute",
+                    bottom: Platform.OS === "ios" ? 25 : 15,
+                    backgroundColor: COLORS.card || "#FFFFFF",
+                    borderRadius: 20,
+                    height: 65,
+                    borderTopWidth: 0,
+                    paddingTop: 24,
                     marginHorizontal: 20,
-                    // iOS için gölge ayarları
                     shadowColor: "#000",
                     shadowOffset: { width: 0, height: 4 },
                     shadowOpacity: 0.1,
                     shadowRadius: 10,
-
-                    // Android için gölge ayarı
                     elevation: 5,
-                },
-                tabBarItemStyle: {
-                    // İkonların tıklanma alanını ve ortalamasını düzenler
-                    justifyContent: 'center',
-                    alignItems: 'center',
                 }
             }}
         >
+            {/* ARTIK İKONLARI SARMALAMAYA GEREK YOK, KOD TERTEMİZ OLDU! */}
             <Tabs.Screen
                 name="index"
                 options={{
