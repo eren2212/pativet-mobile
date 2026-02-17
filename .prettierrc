@@ -1,0 +1,16 @@
+{
+  "overrides": [
+    {
+      "files": "*.json",
+      "options": {
+        "parser": "json"
+      }
+    },
+    {
+      "files": "*.jsonc",
+      "options": {
+        "parser": "json"
+      }
+    }
+  ]
+}
