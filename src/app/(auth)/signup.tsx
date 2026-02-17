@@ -12,6 +12,10 @@ import {
 import { useAuthStore } from '@/store/useAuthStore';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import InputText from '@/components/InputText';
+import { AppText } from '@/components/AppText';
+import { Button } from '@/components/Button';
+
 
 export default function SignUp() {
   const [fullName, setFullName] = useState('');
@@ -74,7 +78,7 @@ export default function SignUp() {
         className="flex-1"
       >
         {/* Header with back button and logo */}
-        <View className="px-6 pt-12 pb-8">
+        <View className="px-6 pt-12 mt-10 pb-8">
 
 
           {/* Logo */}
@@ -85,94 +89,60 @@ export default function SignUp() {
           </View>
 
           {/* Title and subtitle */}
-          <Text className="text-3xl font-bold text-gray-800 text-center mb-2">
+          <AppText className="text-3xl  text-primary mb-2 text-center">
             Hesap Oluştur
-          </Text>
-          <Text className="text-base text-gray-500 text-center mb-8">
-            VetCare'e katılın ve evcil hayvanınızın sağlığını takip edin.
-          </Text>
+          </AppText>
+          <AppText className="text-sm text-secondary mb-6 text-center">
+            Pativet'e katılın ve evcil hayvanınızın sağlığını takip edin.
+          </AppText>
 
           {/* Form Fields */}
-          <View className="space-y-4">
+          <View className="space-y-4 gap-2">
             {/* Full Name Input */}
-            <View className="mb-4">
-              <Text className="text-sm font-medium text-gray-700 mb-2">
-                Ad Soyad
-              </Text>
-              <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
-                <Ionicons name="person-outline" size={20} color="#9CA3AF" />
-                <TextInput
-                  className="flex-1 ml-3 text-base text-gray-800"
-                  placeholder="Adınız Soyadınız"
-                  placeholderTextColor="#9CA3AF"
-                  value={fullName}
-                  onChangeText={setFullName}
-                  autoCapitalize="words"
-                />
-              </View>
-            </View>
+            <InputText
+              leftIcon="person-outline"
+              placeholder="Adınız Soyadınız"
+              label="Ad Soyad"
+              value={fullName}
+              onChangeText={setFullName}
+              containerClassName="mb-0"
+              autoCapitalize="words"
+            />
 
             {/* Email Input */}
-            <View className="mb-4">
-              <Text className="text-sm font-medium text-gray-700 mb-2">
-                E-posta
-              </Text>
-              <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
-                <Ionicons name="mail-outline" size={20} color="#9CA3AF" />
-                <TextInput
-                  className="flex-1 ml-3 text-base text-gray-800"
-                  placeholder="ornek@email.com"
-                  placeholderTextColor="#9CA3AF"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
-            </View>
-
+            <InputText
+              leftIcon="mail-outline"
+              placeholder="ornek@email.com"
+              label="E-posta"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              containerClassName="mb-0"
+            />
             {/* Phone Input */}
-            <View className="mb-4">
-              <Text className="text-sm font-medium text-gray-700 mb-2">
-                Telefon
-              </Text>
-              <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
-                <Ionicons name="call-outline" size={20} color="#9CA3AF" />
-                <TextInput
-                  className="flex-1 ml-3 text-base text-gray-800"
-                  placeholder="05XX XXX XX XX"
-                  placeholderTextColor="#9CA3AF"
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                />
-              </View>
-            </View>
+            <InputText
+              leftIcon="call-outline"
+              placeholder="05XX XXX XX XX"
+              keyboardType="phone-pad"
+              label="Telefon"
+              value={phone}
+              onChangeText={setPhone}
+              containerClassName="mb-0"
+            />
 
             {/* Password Input */}
-            <View className="mb-4">
-              <Text className="text-sm font-medium text-gray-700 mb-2">
-                Şifre
-              </Text>
-              <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
-                <Ionicons name="lock-closed-outline" size={20} color="#9CA3AF" />
-                <TextInput
-                  className="flex-1 ml-3 text-base text-gray-800"
-                  placeholder="••••••••"
-                  placeholderTextColor="#9CA3AF"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={20}
-                    color="#9CA3AF"
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
+            <InputText
+              leftIcon="lock-closed-outline"
+              rightIcon={showPassword ? 'eye-off-outline' : 'eye-outline'}
+              onRightIconPress={() => setShowPassword(!showPassword)}
+              placeholder="••••••••"
+              label="Şifre"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              containerClassName="mb-2"
+            />
 
             {/* KVKK Checkbox */}
             <View className="flex-row items-start mb-6">
@@ -181,44 +151,40 @@ export default function SignUp() {
                 className="mt-1"
               >
                 <View
-                  className={`w-5 h-5 rounded border-2 items-center justify-center ${
-                    acceptedKVKK ? 'bg-blue-500 border-blue-500' : 'border-gray-300'
-                  }`}
+                  className={`w-5 h-5 rounded border-2 items-center justify-center ${acceptedKVKK ? 'bg-cute border-cute' : 'border-gray-300'
+                    }`}
                 >
                   {acceptedKVKK && (
                     <Ionicons name="checkmark" size={14} color="white" />
                   )}
                 </View>
               </TouchableOpacity>
-              <Text className="flex-1 ml-3 text-sm text-gray-600">
-                <Text
-                  className="text-blue-500 underline"
+              <AppText className="flex-1 ml-3 text-sm text-gray-600">
+                <AppText
+                  className="text-cute underline"
                   onPress={() => Alert.alert('KVKK', 'KVKK Aydınlatma Metni')}
                 >
                   KVKK Aydınlatma Metnini
-                </Text>{' '}
+                </AppText>{' '}
                 okudum ve kabul ediyorum.
-              </Text>
+              </AppText>
             </View>
 
             {/* Sign Up Button */}
-            <TouchableOpacity
+            <Button
+              title="Kayıt Ol"
               onPress={handleSignUp}
+              variant="primary"
+              loading={isLoading}
               disabled={isLoading}
-              className={`bg-blue-500 rounded-xl py-4 items-center ${
-                isLoading ? 'opacity-50' : ''
-              }`}
-            >
-              <Text className="text-white text-lg font-semibold">
-                {isLoading ? 'Kayıt Olunuyor...' : 'Kayıt Ol'}
-              </Text>
-            </TouchableOpacity>
+              className="mb-1"
+            />
 
             {/* Sign In Link */}
             <View className="flex-row justify-center items-center mt-6 mb-8">
-              <Text className="text-gray-600">Zaten bir hesabınız var mı? </Text>
+              <AppText >Zaten bir hesabınız var mı? </AppText>
               <TouchableOpacity onPress={() => router.replace('/signin')}>
-                <Text className="text-blue-500 font-semibold">Giriş Yap</Text>
+                <AppText className="text-cute font-semibold">Giriş Yap</AppText>
               </TouchableOpacity>
             </View>
           </View>
