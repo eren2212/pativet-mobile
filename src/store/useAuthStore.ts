@@ -32,6 +32,8 @@ export const useAuthStore = create<AuthState>((set) => ({
             set({ session: data.session, user: data.user });
         }
 
+        console.log(JSON.stringify(data, null, 2));
+
         return { error };
     },
 

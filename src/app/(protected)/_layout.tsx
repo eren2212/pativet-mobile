@@ -11,6 +11,9 @@ export default function ProtectedLayout() {
     return (
         <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="pets/index" options={{ headerShown: false }} />
+            <Stack.Screen name="pets/add" options={{ headerShown: false }} />
+            <Stack.Screen name="pets/edit/[id]" options={{ headerShown: false }} />
         </Stack>
     );
 }
