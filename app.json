@@ -31,7 +31,13 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Size en yakın veteriner kliniklerini gösterebilmemiz için konumunuza ihtiyacımız var."
+        }
+      ]
     ]
   }
 }
