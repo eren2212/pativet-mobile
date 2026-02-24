@@ -24,6 +24,20 @@ export interface Clinic {
     working_hours: ClinicWorkingHours[];
 }
 
+export interface ClinicDetail {
+    id: string;
+    name: string;
+    address: string;
+    phone_number: string | null;
+    rating: number;
+    is_open_24_7: boolean;
+    latitude: number | null;
+    longitude: number | null;
+    about: string | null;
+    appointment_duration: number;
+    working_hours: ClinicWorkingHours[];
+}
+
 export interface ClinicsFilters {
     search: string;
     is_24_7: boolean;
@@ -38,9 +52,15 @@ interface ClinicsState {
     location: { lat: number; lng: number } | null;
     filters: ClinicsFilters;
 
+    // Detail
+    selectedClinic: ClinicDetail | null;
+    isDetailLoading: boolean;
+    detailError: string | null;
+
     setLocation: (loc: { lat: number; lng: number } | null) => void;
     setFilter: (filter: Partial<ClinicsFilters>) => void;
     fetchClinics: () => Promise<void>;
+    fetchClinicById: (id: string) => Promise<void>;
     reset: () => void;
 }
 
@@ -61,10 +81,31 @@ export const useClinicsStore = create<ClinicsState>((set, get) => ({
     location: null,
     filters: { search: '', is_24_7: false, top_rated: false },
 
+    selectedClinic: null,
+    isDetailLoading: false,
+    detailError: null,
+
     setLocation: (loc) => set({ location: loc }),
 
     setFilter: (filter) =>
         set((s) => ({ filters: { ...s.filters, ...filter } })),
+
+    fetchClinicById: async (id: string) => {
+        set({ isDetailLoading: true, detailError: null, selectedClinic: null });
+        try {
+            const token = await getToken();
+            const res = await fetch(`${API_URL}/clinics/${id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) throw new Error('Klinik detayı getirilemedi');
+            const json = await res.json();
+            set({ selectedClinic: json.data ?? null });
+        } catch (err) {
+            set({ detailError: err instanceof Error ? err.message : 'Bilinmeyen hata' });
+        } finally {
+            set({ isDetailLoading: false });
+        }
+    },
 
     fetchClinics: async () => {
         set({ isLoading: true, error: null });
@@ -96,5 +137,8 @@ export const useClinicsStore = create<ClinicsState>((set, get) => ({
     },
 
     reset: () =>
-        set({ clinics: [], count: 0, error: null, isLoading: false, location: null }),
+        set({
+            clinics: [], count: 0, error: null, isLoading: false, location: null,
+            selectedClinic: null, isDetailLoading: false, detailError: null,
+        }),
 }));

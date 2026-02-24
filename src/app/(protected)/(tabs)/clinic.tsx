@@ -5,24 +5,21 @@ import {
     TextInput,
     TouchableOpacity,
     ScrollView,
-    ActivityIndicator,
     RefreshControl,
     StatusBar,
-    StyleSheet,
     ListRenderItemInfo,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { SafeAreaView } from 'react-native-safe-area-context';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore – @expo/vector-icons is a runtime dep bundled with expo
+// @ts-ignore
 import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 
 import { AppText } from '@/components/AppText';
 import { useClinicsStore, Clinic, ClinicWorkingHours } from '@/store/useClinicsStore';
 import COLORS from '@/theme/color';
-import Loading from '@/components/loading/Loading';
 
-// ─── Helper: Distance Formatter ───────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatDistance(meters?: number): string | null {
     if (meters == null) return null;
@@ -30,14 +27,11 @@ function formatDistance(meters?: number): string | null {
     return `${meters} m`;
 }
 
-// ─── Helper: Open/Closed Status ───────────────────────────────────────────────
-
 function checkIsOpen(clinic: Clinic): boolean {
     if (clinic.is_open_24_7) return true;
     if (!clinic.working_hours?.length) return false;
 
     const now = new Date();
-    // JS: 0=Sun…6=Sat  →  API: 1=Mon…7=Sun
     const jsDay = now.getDay();
     const apiDay = jsDay === 0 ? 7 : jsDay;
 
@@ -47,15 +41,11 @@ function checkIsOpen(clinic: Clinic): boolean {
     if (!today || today.is_closed || !today.open_time || !today.close_time) return false;
 
     const cur = now.getHours() * 60 + now.getMinutes();
-    const toMin = (t: string) => {
-        const [h, m] = t.split(':').map(Number);
-        return h * 60 + m;
-    };
+    const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 
     if (today.break_start && today.break_end) {
         if (cur >= toMin(today.break_start) && cur < toMin(today.break_end)) return false;
     }
-
     return cur >= toMin(today.open_time) && cur < toMin(today.close_time);
 }
 
@@ -74,132 +64,113 @@ const DUMMY_SERVICES: string[][] = [
 
 type ActiveFilter = 'nearby' | '24_7' | 'top_rated';
 
-// ─── Rating Badge ─────────────────────────────────────────────────────────────
+// ─── RatingBadge ──────────────────────────────────────────────────────────────
 
 function RatingBadge({ rating }: { rating: number }) {
     return (
-        <View style={styles.ratingBadge}>
+        <View
+            className="absolute top-[7px] right-[7px] bg-white rounded-xl px-1.5 py-[3px] flex-row items-center"
+            style={{ elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 3 }}
+        >
             <Ionicons name="star" size={10} color="#F59E0B" />
-            <AppText style={styles.ratingText}>{rating.toFixed(1)}</AppText>
+            <AppText className="text-[11px] text-primary ml-0.5">{rating.toFixed(1)}</AppText>
         </View>
     );
 }
 
-// ─── Service Tag ──────────────────────────────────────────────────────────────
+// ─── ServiceTag ───────────────────────────────────────────────────────────────
 
 function ServiceTag({ label }: { label: string }) {
     return (
-        <View style={styles.serviceTag}>
-            <AppText style={styles.serviceTagText}>{label}</AppText>
+        <View className="bg-background rounded-full px-2.5 py-1 mr-1.5 mb-1">
+            <AppText className="text-[11px] text-secondary">{label}</AppText>
         </View>
     );
 }
 
-// ─── Filter Chip ──────────────────────────────────────────────────────────────
+// ─── FilterChip ───────────────────────────────────────────────────────────────
 
-interface FilterChipProps {
-    label: string;
-    active: boolean;
-    onPress: () => void;
-}
-
-function FilterChip({ label, active, onPress }: FilterChipProps) {
+function FilterChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
     return (
         <TouchableOpacity
             onPress={onPress}
             activeOpacity={0.75}
-            style={[styles.filterChip, active ? styles.filterChipActive : styles.filterChipInactive]}
+            className={`px-[18px] py-[9px] rounded-full ${active ? 'bg-tint' : 'bg-card border border-quaternary'}`}
         >
-            <AppText style={[styles.filterChipText, { color: active ? '#fff' : COLORS.secondary }]}>
+            <AppText
+                className="text-[13px]"
+                style={{ color: active ? '#fff' : COLORS.secondary }}
+            >
                 {label}
             </AppText>
         </TouchableOpacity>
     );
 }
 
-// ─── Clinic Card ──────────────────────────────────────────────────────────────
+// ─── ClinicCard ───────────────────────────────────────────────────────────────
 
-interface ClinicCardProps {
-    clinic: Clinic;
-    index: number;
-}
-
-function ClinicCard({ clinic, index }: ClinicCardProps) {
+function ClinicCard({ clinic, index }: { clinic: Clinic; index: number }) {
     const isOpen = checkIsOpen(clinic);
     const distance = formatDistance(clinic.distance_meters);
     const bgColor = CARD_COLORS[index % CARD_COLORS.length];
     const services = DUMMY_SERVICES[index % DUMMY_SERVICES.length];
+    const dotColor = isOpen ? COLORS.success : COLORS.error;
 
     return (
-        <View style={styles.card}>
-            <View style={styles.cardBody}>
-                {/* Clinic visual */}
-                <View style={[styles.clinicImageBox, { backgroundColor: bgColor }]}>
-                    <MaterialCommunityIcons
-                        name="hospital-building"
-                        size={38}
-                        color="rgba(255,255,255,0.65)"
-                    />
-                    <RatingBadge rating={clinic.rating} />
-                </View>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.push(`/clinics/${clinic.id}`)}>
+            <View
+                className="bg-card mx-4 mb-3 rounded-[18px] overflow-hidden border border-quaternary"
+                style={{ elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8 }}
+            >
+                {/* Body */}
+                <View className="flex-row p-3.5">
+                    {/* Left: clinic image box */}
+                    <View
+                        className="w-[88px] h-[88px] rounded-[14px] items-center justify-center mr-3.5"
+                        style={{ backgroundColor: bgColor }}
+                    >
+                        <MaterialCommunityIcons name="hospital-building" size={38} color="rgba(255,255,255,0.65)" />
+                        <RatingBadge rating={clinic.rating} />
+                    </View>
 
-                {/* Info column */}
-                <View style={styles.cardInfo}>
-                    <AppText style={styles.clinicName} numberOfLines={2}>
-                        {clinic.name}
-                    </AppText>
-
-                    {/* Status + Distance */}
-                    <View style={styles.statusRow}>
-                        <View
-                            style={[
-                                styles.statusDot,
-                                { backgroundColor: isOpen ? COLORS.success : COLORS.error },
-                            ]}
-                        />
-                        <AppText
-                            style={[
-                                styles.statusText,
-                                { color: isOpen ? COLORS.success : COLORS.error },
-                            ]}
-                        >
-                            {isOpen ? 'Açık' : 'Kapalı'}
+                    {/* Right: info */}
+                    <View className="flex-1">
+                        <AppText className="text-[15px] text-primary mb-[7px] leading-5" numberOfLines={2}>
+                            {clinic.name}
                         </AppText>
 
-                        {distance && (
-                            <>
-                                <AppText style={styles.dot}> · </AppText>
-                                <AppText style={styles.distanceText}>{distance}</AppText>
-                            </>
-                        )}
-                    </View>
+                        {/* Status + Distance */}
+                        <View className="flex-row items-center mb-2.5">
+                            <View className="w-2 h-2 rounded-full mr-[5px]" style={{ backgroundColor: dotColor }} />
+                            <AppText className="text-[13px]" style={{ color: dotColor }}>
+                                {isOpen ? 'Açık' : 'Kapalı'}
+                            </AppText>
+                            {distance && (
+                                <>
+                                    <AppText className="text-[13px] text-tertiary"> · </AppText>
+                                    <AppText className="text-[13px] text-tertiary">{distance}</AppText>
+                                </>
+                            )}
+                        </View>
 
-                    {/* Service tags */}
-                    <View style={styles.tagsRow}>
-                        {services.map((s) => (
-                            <ServiceTag key={s} label={s} />
-                        ))}
+                        {/* Service tags */}
+                        <View className="flex-row flex-wrap">
+                            {services.map((s) => <ServiceTag key={s} label={s} />)}
+                        </View>
                     </View>
                 </View>
             </View>
-
-            {/* Footer */}
-            <View style={styles.cardFooter}>
-                <TouchableOpacity activeOpacity={0.7}>
-                    <AppText style={styles.detailsLink}>Detaylar</AppText>
-                </TouchableOpacity>
-            </View>
-        </View>
+        </TouchableOpacity>
     );
 }
 
-// ─── Empty / Loading Placeholder ──────────────────────────────────────────────
+// ─── EmptyList ────────────────────────────────────────────────────────────────
 
 function EmptyList() {
     return (
-        <View style={styles.placeholder}>
+        <View className="items-center justify-center pt-20">
             <MaterialCommunityIcons name="hospital" size={52} color={COLORS.tertiary} />
-            <AppText style={styles.emptyText}>Klinik bulunamadı</AppText>
+            <AppText className="mt-3.5 text-[15px] text-tertiary">Klinik bulunamadı</AppText>
         </View>
     );
 }
@@ -214,77 +185,57 @@ export default function ClinicScreen() {
     const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isMounted = useRef(true);
 
-    // On mount: ask for location permission, grab coords, then fetch
     useEffect(() => {
         isMounted.current = true;
         (async () => {
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status === 'granted') {
-                const loc = await Location.getCurrentPositionAsync({
-                    accuracy: Location.Accuracy.Balanced,
-                });
-                if (isMounted.current) {
-                    setLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
-                }
+                const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                if (isMounted.current) setLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
             }
             if (isMounted.current) fetchClinics();
         })();
-
         return () => {
             isMounted.current = false;
             if (searchTimer.current) clearTimeout(searchTimer.current);
         };
-        // intentionally run once on mount
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // ── Handlers ──────────────────────────────────────────────────────────────
-
     const handleFilterPress = (filter: ActiveFilter) => {
         setActiveFilter(filter);
-        if (filter === 'nearby') {
-            setFilter({ is_24_7: false, top_rated: false });
-        } else if (filter === '24_7') {
-            setFilter({ is_24_7: true, top_rated: false });
-        } else {
-            setFilter({ is_24_7: false, top_rated: true });
-        }
-        // Zustand set() is synchronous, so fetchClinics() reads updated state immediately
+        if (filter === 'nearby') setFilter({ is_24_7: false, top_rated: false });
+        else if (filter === '24_7') setFilter({ is_24_7: true, top_rated: false });
+        else setFilter({ is_24_7: false, top_rated: true });
         fetchClinics();
     };
 
     const handleSearch = (text: string) => {
-
         setSearchText(text);
         if (searchTimer.current) clearTimeout(searchTimer.current);
-        searchTimer.current = setTimeout(() => {
-            setFilter({ search: text });
-            fetchClinics();
-        }, 500);
+        searchTimer.current = setTimeout(() => { setFilter({ search: text }); fetchClinics(); }, 1000);
     };
 
-    // ── Render helpers ────────────────────────────────────────────────────────
-
     const renderClinic = useCallback(
-        ({ item, index }: ListRenderItemInfo<Clinic>) => (
-            <ClinicCard clinic={item} index={index} />
-        ),
+        ({ item, index }: ListRenderItemInfo<Clinic>) => <ClinicCard clinic={item} index={index} />,
         [],
     );
-
     const keyExtractor = useCallback((item: Clinic) => item.id, []);
 
     const ListHeader = (
         <>
             {/* Search bar */}
-            <View style={styles.searchBar}>
+            <View
+                className="flex-row items-center bg-card rounded-2xl mx-4 mb-3 px-3.5 h-[50px]"
+                style={{ elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4 }}
+            >
                 <Feather name="search" size={18} color={COLORS.tertiary} />
                 <TextInput
                     placeholder="Klinik adı veya ilçe ara"
                     placeholderTextColor={COLORS.tertiary}
                     value={searchText}
                     onChangeText={handleSearch}
-                    style={styles.searchInput}
+                    className="flex-1 ml-2.5 text-primary text-sm font-ozel-regular"
                 />
                 <TouchableOpacity activeOpacity={0.7}>
                     <Feather name="sliders" size={18} color={COLORS.secondary} />
@@ -295,42 +246,31 @@ export default function ClinicScreen() {
             <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.chipList}
+                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 14, gap: 10 }}
             >
-                <FilterChip
-                    label="Yakınımda"
-                    active={activeFilter === 'nearby'}
-                    onPress={() => handleFilterPress('nearby')}
-                />
-                <FilterChip
-                    label="7/24 Acil"
-                    active={activeFilter === '24_7'}
-                    onPress={() => handleFilterPress('24_7')}
-                />
-                <FilterChip
-                    label="Puanı Yüksek"
-                    active={activeFilter === 'top_rated'}
-                    onPress={() => handleFilterPress('top_rated')}
-                />
+                <FilterChip label="Yakınımda" active={activeFilter === 'nearby'} onPress={() => handleFilterPress('nearby')} />
+                <FilterChip label="7/24 Acil" active={activeFilter === '24_7'} onPress={() => handleFilterPress('24_7')} />
+                <FilterChip label="Puanı Yüksek" active={activeFilter === 'top_rated'} onPress={() => handleFilterPress('top_rated')} />
             </ScrollView>
         </>
     );
 
-    // ── JSX ───────────────────────────────────────────────────────────────────
-
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView className="flex-1 bg-background">
             <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
             {/* Header */}
-            <View style={styles.header}>
-                <View style={styles.headerText}>
-                    <AppText style={styles.title}>Klinik Bul</AppText>
-                    <AppText style={styles.subtitle}>
+            <View className="flex-row items-start justify-between px-5 pt-4 pb-3">
+                <View className="flex-1">
+                    <AppText className="text-[28px] text-primary leading-[34px]">Klinik Bul</AppText>
+                    <AppText className="text-sm text-secondary mt-1">
                         Pamuk için en yakın sağlık merkezini seçin
                     </AppText>
                 </View>
-                <View style={styles.pawBadge}>
+                <View
+                    className="rounded-full p-2.5 ml-3 mt-0.5"
+                    style={{ backgroundColor: COLORS.tint + '1A' }}
+                >
                     <MaterialCommunityIcons name="paw" size={24} color={COLORS.tint} />
                 </View>
             </View>
@@ -342,7 +282,7 @@ export default function ClinicScreen() {
                 ListHeaderComponent={ListHeader}
                 ListEmptyComponent={<EmptyList />}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.listContent}
+                contentContainerStyle={{ paddingBottom: 110 }}
                 refreshControl={
                     <RefreshControl
                         refreshing={isLoading}
@@ -355,213 +295,3 @@ export default function ClinicScreen() {
         </SafeAreaView>
     );
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: COLORS.background,
-    },
-
-    // Header
-    header: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingTop: 16,
-        paddingBottom: 12,
-    },
-    headerText: { flex: 1 },
-    title: {
-        fontSize: 28,
-        color: COLORS.primary,
-        lineHeight: 34,
-    },
-    subtitle: {
-        fontSize: 14,
-        color: COLORS.secondary,
-        marginTop: 4,
-    },
-    pawBadge: {
-        backgroundColor: COLORS.tint + '1A', // 10 % opacity
-        borderRadius: 50,
-        padding: 10,
-        marginLeft: 12,
-        marginTop: 2,
-    },
-
-    // Search bar
-    searchBar: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: COLORS.card,
-        borderRadius: 16,
-        marginHorizontal: 16,
-        marginBottom: 12,
-        paddingHorizontal: 14,
-        height: 50,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.06,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    searchInput: {
-        flex: 1,
-        marginLeft: 10,
-        color: COLORS.primary,
-        fontFamily: 'Domine-Regular',
-        fontSize: 14,
-    },
-
-    // Filter chips
-    chipList: {
-        paddingHorizontal: 16,
-        paddingBottom: 14,
-        gap: 10,
-    },
-    filterChip: {
-        paddingHorizontal: 18,
-        paddingVertical: 9,
-        borderRadius: 50,
-    },
-    filterChipActive: {
-        backgroundColor: COLORS.tint,
-    },
-    filterChipInactive: {
-        backgroundColor: COLORS.card,
-        borderWidth: 1,
-        borderColor: COLORS.quaternary,
-    },
-    filterChipText: {
-        fontSize: 13,
-    },
-
-    // Card
-    card: {
-        backgroundColor: COLORS.card,
-        marginHorizontal: 16,
-        marginBottom: 12,
-        borderRadius: 18,
-        overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.07,
-        shadowRadius: 8,
-        elevation: 3,
-    },
-    cardBody: {
-        flexDirection: 'row',
-        padding: 14,
-    },
-    clinicImageBox: {
-        width: 88,
-        height: 88,
-        borderRadius: 14,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 14,
-    },
-    cardInfo: { flex: 1 },
-    clinicName: {
-        fontSize: 15,
-        color: COLORS.primary,
-        marginBottom: 7,
-        lineHeight: 20,
-    },
-
-    // Status row
-    statusRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 10,
-    },
-    statusDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        marginRight: 5,
-    },
-    statusText: { fontSize: 13 },
-    dot: {
-        fontSize: 13,
-        color: COLORS.tertiary,
-    },
-    distanceText: {
-        fontSize: 13,
-        color: COLORS.tertiary,
-    },
-
-    // Tags
-    tagsRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-    },
-    serviceTag: {
-        backgroundColor: COLORS.background,
-        borderRadius: 20,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        marginRight: 6,
-        marginBottom: 4,
-    },
-    serviceTagText: {
-        fontSize: 11,
-        color: COLORS.secondary,
-    },
-
-    // Rating badge (absolute inside clinicImageBox)
-    ratingBadge: {
-        position: 'absolute',
-        top: 7,
-        right: 7,
-        backgroundColor: '#FFF',
-        borderRadius: 12,
-        paddingHorizontal: 6,
-        paddingVertical: 3,
-        flexDirection: 'row',
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.15,
-        shadowRadius: 3,
-        elevation: 3,
-    },
-    ratingText: {
-        fontSize: 11,
-        color: COLORS.primary,
-        marginLeft: 2,
-    },
-
-    // Card footer
-    cardFooter: {
-        borderTopWidth: 1,
-        borderTopColor: COLORS.quaternary,
-        paddingHorizontal: 14,
-        paddingVertical: 9,
-        alignItems: 'flex-end',
-    },
-    detailsLink: {
-        fontSize: 13,
-        color: COLORS.tint,
-    },
-
-    // List
-    listContent: {
-        paddingBottom: 110,
-    },
-
-    // Empty / loading
-    placeholder: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingTop: 80,
-    },
-    emptyText: {
-        marginTop: 14,
-        fontSize: 15,
-        color: COLORS.tertiary,
-    },
-});
