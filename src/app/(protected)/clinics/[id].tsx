@@ -377,6 +377,7 @@ export default function ClinicDetailScreen() {
             >
                 <TouchableOpacity
                     activeOpacity={0.85}
+                    onPress={() => router.push(`/clinics/book?id=${clinic.id}`)}
                     className="bg-tint rounded-2xl py-4 flex-row items-center justify-center"
                     style={{
                         shadowColor: COLORS.tint,
